@@ -10,6 +10,11 @@ if (!cart) {
   }];
 }
 
+
+const addedToCartTimeouts = {};
+
+
+
 export function saveToStorage() {
   localStorage.setItem('cart', JSON.stringify(cart));
 }
@@ -39,14 +44,31 @@ export function addToCart(productId) {
     matchingItem.quantity += quantityPicked;
   } else {
     cart.push({
-      productId: productId,
+      productId,
       quantity: quantityPicked
     });
   }
-
-  
-
   saveToStorage();
+  makeAddedTextAppear(productId)
+}
+
+function makeAddedTextAppear(productId) {
+  const addedToCart = document.querySelector(`.js-added-to-cart-${productId}`);
+
+    /* Add classlist for Added to cart text and fix Timeout issue when overlapping. vvv */
+    addedToCart.classList.add('added-to-cart-visible');
+
+    const previousTimeoutId = addedToCartTimeouts[productId]
+    
+    if (previousTimeoutId) {
+      clearTimeout(previousTimeoutId)
+    }
+
+    const timeoutId = setTimeout(() => {
+      addedToCart.classList.remove('added-to-cart-visible');
+    }, 2000);
+
+    addedToCartTimeouts[productId] = timeoutId
 }
 
 export function removeFromCart(productId) {
