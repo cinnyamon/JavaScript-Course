@@ -1,17 +1,13 @@
 export let cart = JSON.parse(localStorage.getItem('cart'));
 
 if (!cart) {
-  cart = [{
-    id: 'e43638ce-6aa0-4b85-b27f-e1d07eb678c6',
-    quantity: 2,
-  }, {
-    id: '15b6fc6f-327a-4ec4-896f-486349e85a3d',
-    quantity: 1
-  }];
+  cart = [];
 }
 
+//FIRST WE DEFINE THE PREVIOUS TIMEOUT IN GLOBAL SCOPE!!!
 
 const addedToCartTimeouts = {};
+let previousTimeoutId = {}; 
 
 
 
@@ -19,20 +15,25 @@ export function saveToStorage() {
   localStorage.setItem('cart', JSON.stringify(cart));
 }
 
-export function updateCartOnLoad() {
+export function updateCartOnLoad(totalQuantity) {
   const localStorageCartItems = JSON.parse(localStorage.getItem('cart'))
 
-  let totalQuantity = 0;
+  totalQuantity = 0;
   localStorageCartItems.forEach(element => {
     totalQuantity += element.quantity
   });
 
-  document.querySelector('.js-cart-quantity').innerHTML = totalQuantity
+  document.querySelector('.js-cart-quantity').innerHTML = totalQuantity;
+  return totalQuantity
 }
 
 export function addToCart(productId) {
   let matchingItem;
   const quantityPicked = Number(document.querySelector(`.js-quantity-picker-${productId}`).value)
+
+  if (!canAddToCart(productId)) {
+    return; // exit early if addition is not allowed
+  }
 
   cart.forEach((cartItem) => {
     if (productId === cartItem.productId) {
@@ -48,9 +49,35 @@ export function addToCart(productId) {
       quantity: quantityPicked
     });
   }
+  makeAddedTextAppear(productId);
   saveToStorage();
-  makeAddedTextAppear(productId)
 }
+
+function canAddToCart(productId) {
+  const cartFullBanner = document.querySelector('.js-cart-is-full-banner') // stop if cart has more than 10 items
+  let cartSize = updateCartOnLoad()
+  const quantityPicked = Number(document.querySelector(`.js-quantity-picker-${productId}`).value);
+
+  if (cartSize + quantityPicked > 100) {
+    cartFullBanner.classList.add('js-cart-is-full-visible');
+
+    if (previousTimeoutId) {
+      clearTimeout(previousTimeoutId)
+    };
+
+    const timeoutId = setInterval(() => cartFullBanner.classList.remove('js-cart-is-full-visible')
+     , 2000);
+
+     previousTimeoutId = timeoutId
+
+    return false; // this shit prrevents the addition
+  }
+
+  //can add more shit here
+  cartFullBanner.classList.remove('js-cart-is-full-visible');
+  return true; // this return true allows the addition
+}
+
 
 function makeAddedTextAppear(productId) {
   const addedToCart = document.querySelector(`.js-added-to-cart-${productId}`);
@@ -60,13 +87,10 @@ function makeAddedTextAppear(productId) {
 
     const previousTimeoutId = addedToCartTimeouts[productId]
     
-    if (previousTimeoutId) {
-      clearTimeout(previousTimeoutId)
-    }
+    if (previousTimeoutId) {clearTimeout(previousTimeoutId)}
 
-    const timeoutId = setTimeout(() => {
-      addedToCart.classList.remove('added-to-cart-visible');
-    }, 2000);
+    const timeoutId = setTimeout(() => addedToCart.classList.remove('added-to-cart-visible')
+    , 2000);
 
     addedToCartTimeouts[productId] = timeoutId
 }
@@ -81,6 +105,5 @@ export function removeFromCart(productId) {
   });
 
   cart = newCart;
-
   saveToStorage();
 }
