@@ -1,8 +1,6 @@
-export let cart = JSON.parse(localStorage.getItem('cart'));
+export let cart = []
 
-if (!cart) {
-  cart = [];
-}
+cart = JSON.parse(localStorage.getItem('cart')) || []
 
 //FIRST WE DEFINE THE PREVIOUS TIMEOUT IN GLOBAL SCOPE!!!
 
@@ -16,13 +14,8 @@ export function saveToStorage() {
 }
 
 export function updateCartOnLoad(totalQuantity) {
-  const localStorageCartItems = JSON.parse(localStorage.getItem('cart'))
-
-  totalQuantity = 0;
-  localStorageCartItems.forEach(element => {
-    totalQuantity += element.quantity
-  });
-
+  totalQuantity = cart.reduce((total, item) => total + (item.quantity || 0), 0);
+  
   document.querySelector('.js-cart-quantity').innerHTML = totalQuantity;
   return totalQuantity
 }
@@ -46,7 +39,8 @@ export function addToCart(productId) {
   } else {
     cart.push({
       productId,
-      quantity: quantityPicked
+      quantity: quantityPicked,
+      deliveryOptionsId: '1'
     });
   }
   makeAddedTextAppear(productId);
@@ -122,5 +116,17 @@ export function updateQuantityFromInput(productId, inputNewQuantity) {
   saveToStorage();
 }
 
+/* document.querySelector('.payment-summary-money').innerHTML = `$`
 
+let totalCartPrice
+  cart.forEach((cartItem) => {
+    cartItem.priceCents += totalCartPrice
+    console.log(cartItem)
+  })
+
+
+
+function calculateTotal() {
+  
+} */
 
