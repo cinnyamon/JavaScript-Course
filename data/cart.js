@@ -78,7 +78,6 @@ function canAddToCart(productId) {
   return true; // this return true allows the addition
 }
 
-
 function makeAddedTextAppear(productId) {
   const addedToCart = document.querySelector(`.js-added-to-cart-${productId}`);
 
@@ -107,3 +106,21 @@ export function removeFromCart(productId) {
   cart = newCart;
   saveToStorage();
 }
+
+export function updateQuantityFromInput(productId, inputNewQuantity) {
+
+  let matchingItem;
+
+  cart.forEach((cartItem) => {
+    if (productId === cartItem.productId) {
+      matchingItem = cartItem;
+    }
+  });
+
+  matchingItem.quantity = inputNewQuantity;
+
+  saveToStorage();
+}
+
+
+
