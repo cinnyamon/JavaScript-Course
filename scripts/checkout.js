@@ -1,4 +1,5 @@
-import {cart, removeFromCart, updateQuantityFromInput} from '../data/cart.js';
+import {cart, removeFromCart, saveToStorage, updateQuantityFromInput} from '../data/cart.js';
+import { deliveryOptions } from "../data/deliveryoptions.js";
 import {products} from '../data/products.js';
 import {formatCurrency} from './utils/money.js';
 import dayjs from 'https://unpkg.com/supersimpledev@8.5.0/dayjs/esm/index.js';
@@ -24,10 +25,11 @@ export function updateCartQuantity() {
 
 /* Global variables */
 let previousQuantityTimerId = {}
-let otherPreviousTimerId = {}
 let cartSummaryHTML = '';
+/////////////////////////////////////////
 
 
+// Generate the html for the checkout page
 cart.forEach((cartItem) => {
   const productId = cartItem.productId;
 
@@ -65,8 +67,9 @@ cart.forEach((cartItem) => {
               Update
             </span>
 
-            <input class="quantity-input">
-            <span class="save-quantity-link link-primary" data-product-id="${matchingProduct.id}">Save</span>
+            <input class="quantity-input js-quantity-input-${matchingProduct.id}"
+            data-product-id="${matchingProduct.id}">
+            <span class="save-quantity-link link-primary js-save-quantity-${matchingProduct.id}" data-product-id="${matchingProduct.id}">Save</span>
 
             <span class="delete-quantity-link link-primary js-delete-link" data-product-id="${matchingProduct.id}">
               Delete
@@ -79,54 +82,89 @@ cart.forEach((cartItem) => {
           <div class="delivery-options-title">
             Choose a delivery option:
           </div>
-          <div class="delivery-option">
-            <input type="radio" checked
-              class="delivery-option-input"
-              name="delivery-option-${matchingProduct.id}">
-            <div>
-              <div class="delivery-option-date">
-                Tuesday, June 21
-              </div>
-              <div class="delivery-option-price">
-                FREE Shipping
-              </div>
-            </div>
-          </div>
-          <div class="delivery-option">
-            <input type="radio"
-              class="delivery-option-input"
-              name="delivery-option-${matchingProduct.id}">
-            <div>
-              <div class="delivery-option-date">
-                Wednesday, June 15
-              </div>
-              <div class="delivery-option-price">
-                $4.99 - Shipping
-              </div>
-            </div>
-          </div>
-          <div class="delivery-option">
-            <input type="radio"
-              class="delivery-option-input"
-              name="delivery-option-${matchingProduct.id}">
-            <div>
-              <div class="delivery-option-date">
-                Monday, June 13
-              </div>
-              <div class="delivery-option-price">
-                $9.99 - Shipping
-              </div>
-            </div>
-          </div>
+          ${generateDeliveryDate(matchingProduct)}
         </div>
       </div>
     </div>
   `;
 });
-
 document.querySelector('.js-order-summary')
   .innerHTML = cartSummaryHTML;
+////////////////////////////////////////////
 
+
+// Generate delivery date on the option html and display it on the page
+function generateDeliveryDate(matchingProduct) {
+
+  let html = '';
+
+  deliveryOptions.forEach((deliveryItem) => {
+    const today = dayjs();
+    const deliveryDate = today.add(deliveryItem.deliveryDays, 'days')
+    const dateString = deliveryDate.format('dddd, MMMM D');
+    const priceString = deliveryItem.priceCents === 0
+    ? 'FREE'
+    : `$${formatCurrency(deliveryItem.priceCents)} -`
+    // ^^ this line above basically takes the priceCents and puts it into the formatCurrency function and gives us the price in dollars. this wholes constant is a ternary operator that says if the priceCents is 0 then display the text FREE and if not display the actual price from the deliveryoptions.js file
+
+    html += `<div class="delivery-option js-delivery-option">
+                <input type="radio"
+                  class="delivery-option-input js-input-option"
+                  name="delivery-option">
+                <div>
+                  <div class="delivery-option-date">
+                    ${dateString}
+                  </div>
+                  <div class="delivery-option-price">
+                     ${priceString} Shipping
+                  </div>
+                </div>
+              </div>`
+    
+  });
+  return html;
+};
+///////////////////////////////////////////////////
+
+  const actualDate = { date: null } //setting default null value is optional but its good practice to set the key instead of leaving it undefined
+
+// Get the date in string form from radio selectors on click
+  function getDateFromRadio() {
+    document.querySelectorAll('.js-delivery-option').forEach((element) => {
+      element.addEventListener('click', () => {
+        const dateElement = element.querySelector('.delivery-option-date');
+        const date = dateElement?.textContent.trim();
+        console.log(actualDate);
+
+        if (date) {
+          actualDate.date = date;
+          console.log(actualDate);
+        }
+      })
+    })
+  }
+///////////////////////////////////////////////////
+
+
+// Testing switch case instead of if else statements for date cases. if date then ... if anotherDate then ...
+// getDateFromRadio()
+// switch (actualDate) {
+//   case actualDate === 'Wednesday, July 9':
+//     console.log('worked again');
+//     break;
+//   case actualDate === 'Saturday, July 5':
+//     console.log('worked again');
+//     break;
+//   case actualDate === undefined:
+//     console.log('the object was empty');
+//     break;
+// }
+// let testOfDate = ''
+// for (let date in actualDate) {
+//   testOfDate += actualDate[date]
+// }
+
+// Delete functionality of the links from the checkout page
 document.querySelectorAll('.js-delete-link')
   .forEach((link) => {
     link.addEventListener('click', () => {
@@ -139,82 +177,90 @@ document.querySelectorAll('.js-delete-link')
       container.remove();
     });
   });
+////////////////////////////////////////////
 
-  let cartQuantity = 0;
+
+// Update checkout quantity header with the quantity of items in the cart
+let cartQuantity = 0;
 
 cart.forEach((cartItem) => {
   cartQuantity += cartItem.quantity;
 });
-
 document.querySelector('.js-checkout-quantity-header')
   .innerHTML = `${cartQuantity} items`;
+////////////////////////////////////////////
 
 
 /* Selecting all of the buttons from the page that we want and putting them in a constant */
 const updateQuantityLink = document.querySelectorAll(`.js-update-link`);
-const inputQuantity = document.querySelector('.quantity-input')
-
-
 /* for each link we add an event listener for the click button which then defines productId as the links dataset */
 updateQuantityLink.forEach((link) => {
   link.addEventListener('click', () => {
+
     const productId = link.dataset.productId;
     const container = document.querySelector(`.js-cart-item-container-${productId}`);
-    const saveLinks = document.querySelectorAll('.save-quantity-link');
+    const saveLinks = document.querySelectorAll(`.js-save-quantity-${productId}`);
     const quantityLabel = document.querySelector(`.js-quantity-label-${productId}`);
+    const inputBox = document.querySelectorAll(`.js-quantity-input-${productId}`);
 
-    container.classList.add('is-editing-quantity');
+      let liveQuantity = null;
 
-    inputQuantity.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        const inputNewQuantity = Number(inputQuantity.value);
-        updateQuantityFromInput(productId, inputNewQuantity);
-        container.classList.remove('is-editing-quantity');
-        quantityLabel.innerHTML = inputNewQuantity;
-      }
-    });
+      inputBox.forEach((inputbox) => {
+        inputbox.addEventListener('input', () => {
+          liveQuantity = Number(inputbox.value);
+        });
 
-    saveLinks.forEach((saveLink) => {
+      container.classList.add('is-editing-quantity');
+
+      console.log(productId);
+      console.log(inputBox);
+
+      inputBox.forEach((inputbox) => {
+        inputbox.addEventListener('keydown', (event) => {
+
+          liveQuantity = Number(inputbox.value)
+          if (event.key === 'Enter' && liveQuantity > 0) {
+            console.log(liveQuantity)
+            updateQuantityFromInput(productId, liveQuantity);
+            container.classList.remove('is-editing-quantity');
+            quantityLabel.innerHTML = liveQuantity;
+          } else if (event.key === 'Enter' && (liveQuantity <= 0 || liveQuantity > 100)) {
+            
+            const invalQuan = document.querySelector(`.js-invalid-quantity-${productId}`);
+            invalQuan.innerHTML = 'Invalid quantity. Please add more items.';
+
+
+            // this is a bullshit clear timeout bug FIXED
+            if (previousQuantityTimerId) {clearTimeout(previousQuantityTimerId)
+            }
+            const timeoutId = setInterval(() => {
+              invalQuan.innerHTML = ''
+            }, 2000);
+            previousQuantityTimerId = timeoutId;
+            // the bullshit ends here 
+
+          }
+        })
+      });
+
+      saveLinks.forEach((saveLink) => {
       saveLink.addEventListener('click', () => {
-        const inputNewQuantity = Number(inputQuantity.value);
-        container.classList.remove('is-editing-quantity');
-
-        if (inputNewQuantity <= 0) {
-
-          const invalQuan = document.querySelector(`.js-invalid-quantity-${productId}`);
-          invalQuan.innerHTML = 'Invalid quantity. Please add more items.';
-
-
-          // this is a bullshit clear timeout bug FIXED
-          if (previousQuantityTimerId) {clearTimeout(previousQuantityTimerId)
+          if (liveQuantity <= 0 || liveQuantity > 100 || isNaN(liveQuantity)) {
+            const invalQuan = document.querySelector(`.js-invalid-quantity-${productId}`);
+            invalQuan.innerHTML = 'Invalid quantity. Please add more items.';
+      
+            if (previousQuantityTimerId) clearTimeout(previousQuantityTimerId);
+            previousQuantityTimerId = setTimeout(() => {
+              invalQuan.innerHTML = '';
+            }, 2000);
+          } else {
+            updateQuantityFromInput(productId, liveQuantity);
+            quantityLabel.innerHTML = liveQuantity;
+            container.classList.remove('is-editing-quantity');
           }
-          const timeoutId = setInterval(() => {
-            invalQuan.innerHTML = ''
-          }, 2000);
-          previousQuantityTimerId = timeoutId;
-          // the bullshit ends here 
-
-        } else if (inputNewQuantity >= 100){
-
-
-          document.querySelector(`.js-invalid-quantity-${productId}`).innerHTML = 'Too many items in the cart.'
-
-          if (otherPreviousTimerId) {clearTimeout(otherPreviousTimerId)
-          }
-          const timeoutId = setInterval(() => {
-            document.querySelector(`.js-invalid-quantity-${productId}`).innerHTML = ''
-          }, 2000);
-          otherPreviousTimerId = timeoutId;
-
-
-        } else {
-
-          updateQuantityFromInput(productId, inputNewQuantity)
-        }
-        quantityLabel.innerHTML = inputNewQuantity;
-      })
+        })
+      });
     })
   })
 })
 
- 
